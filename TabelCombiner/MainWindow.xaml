@@ -1,0 +1,28 @@
+﻿<Window x:Class="TabelCombiner.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:TabelCombiner"
+        mc:Ignorable="d"
+        Title="TabelCombiner" Height="450" Width="800">
+    <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="40" Margin="10">
+            <Button Content="Hinzufügen" FontSize="16" Padding="10,0,10,0" Margin="0,0,20,0" Click="BtnHinzufügen_Click"/>
+            <Button x:Name="btnLöschen" Content="Löschen" FontSize="16" Padding="10,0,10,0" Background="DarkRed" IsEnabled="False" Click="BtnLöschen_Click"/>
+        </StackPanel>
+        <Border DockPanel.Dock="Top" BorderThickness="2" BorderBrush="#003B65"/>
+        <Grid DockPanel.Dock="Bottom" Margin="10">
+            <Button x:Name="btnZusammenfügen" IsEnabled="False" Content="Zusammenfügen" Click="BtnZusammenfügen_Click"/>
+        </Grid>
+
+
+        <ListBox x:Name="ListBoxFiles" Padding="10" SelectionMode="Extended" ScrollViewer.VerticalScrollBarVisibility="Auto" SelectionChanged="ListBoxFiles_SelectionChanged">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding FullName}"/>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </DockPanel>
+</Window>
