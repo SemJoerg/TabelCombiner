@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:TabelCombiner"
         mc:Ignorable="d"
-        Title="TabelCombiner" Height="450" Width="800">
+        Title="TabelCombiner" MinHeight="300" Height="450" MinWidth="400" Width="800">
     <DockPanel>
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="40" Margin="10">
             <Button Content="Hinzufügen" FontSize="16" Padding="10,0,10,0" Margin="0,0,20,0" Click="BtnHinzufügen_Click"/>

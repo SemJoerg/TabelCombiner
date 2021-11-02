@@ -35,8 +35,9 @@ namespace TabelCombiner
                 excelApp.Visible = false;
                 workbooks = excelApp.Workbooks;
                 mainWorkbook = workbooks.Add();
-                Excel._Worksheet mainSheet = (Excel._Worksheet)mainWorkbook.ActiveSheet;
-                int mainSheetRowCounter = 2;
+                //Excel._Worksheet mainSheet = (Excel._Worksheet)mainWorkbook.ActiveSheet;
+                Excel._Worksheet mainSheet = (Excel._Worksheet)mainWorkbook.Sheets[1];
+                int mainSheetRowCounter = 0;
                 bool copyTabelHeadder = true;
 
                 //Read And Combine Files
@@ -46,23 +47,35 @@ namespace TabelCombiner
                     try
                     {
                         newWorkbook = workbooks.Open(file.FullName);
-                        for (int i = 0; i < newWorkbook.Sheets.Count; i++)
+                        Excel._Worksheet newSheet = null;
+                        if (copyTabelHeadder)
                         {
-                            Excel._Worksheet newSheet = (Excel._Worksheet)newWorkbook.Sheets[i + 1];
+                            newSheet = (Excel.Worksheet)newWorkbook.Sheets[1];
                             int lastRow = LastRowTotal(newSheet);
-
-                            if (copyTabelHeadder)
-                            {
-                                Excel.Range headderSource = newSheet.Range["1:1"];
-                                Excel.Range headderDestination = mainSheet.Range["1:1"];
-                                headderSource.Copy(headderDestination);
-                                copyTabelHeadder = false;
-                            }
-
-                            Excel.Range source = newSheet.Range["2:" + lastRow];
-                            Excel.Range destination = mainSheet.Range[mainSheetRowCounter + ":" + mainSheetRowCounter];
-                            mainSheetRowCounter += lastRow - 1;
+                            Excel.Range source = newSheet.Range["1:" + lastRow];
+                            Excel.Range destination = mainSheet.Range["1:1"];
                             source.Copy(destination);
+                            mainSheetRowCounter = lastRow + 1;
+                            for (int i = 2; i <= newWorkbook.Sheets.Count; i++)
+                            {
+                                newSheet = (Excel._Worksheet)newWorkbook.Sheets[i];
+                                newSheet.Copy(After: mainSheet);
+                                mainSheet.Activate();
+                            }
+                            copyTabelHeadder = false;
+                        }
+                        else
+                        {
+                            newSheet = (Excel._Worksheet)newWorkbook.Sheets[1];
+
+                            int lastRow = LastRowTotal(newSheet);
+                            if(lastRow > 1)
+                            {
+                                Excel.Range source = newSheet.Range["2:" + lastRow];
+                                Excel.Range destination = mainSheet.Range[mainSheetRowCounter + ":" + mainSheetRowCounter];
+                                mainSheetRowCounter += lastRow - 1;
+                                source.Copy(destination);
+                            }
                         }
                     }
                     catch (Exception ex)
