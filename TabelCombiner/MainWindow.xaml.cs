@@ -22,6 +22,7 @@ namespace TabelCombiner
         {
             InitializeComponent();
             ExcelLogic.excelWorker.RunWorkerCompleted += ExcelWorker_RunWorkerCompleted;
+            ExcelLogic.excelWorker.ProgressChanged += ExcelWorker_ProgressChanged;
             ListBoxFiles.MouseDown += ListBoxFiles_MouseDown; //Added EventHandler here as an error accours in xaml
             fileList = new ObservableCollection<FileInfo>();
             fileList.CollectionChanged += FileList_CollectionChanged;
@@ -31,6 +32,14 @@ namespace TabelCombiner
         private void ExcelWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
             Mouse.OverrideCursor = null;
+            pbStatus.Visibility = Visibility.Hidden;
+            btnCancel.Visibility = Visibility.Hidden;
+            btnZusammenfügen.Visibility = Visibility.Visible;
+        }
+
+        private void ExcelWorker_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            pbStatus.Value = e.ProgressPercentage;
         }
 
         private void FileList_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
@@ -99,7 +108,21 @@ namespace TabelCombiner
             if(!ExcelLogic.excelWorker.IsBusy)
             {
                 Mouse.OverrideCursor = Cursors.Wait;
+                btnZusammenfügen.Visibility = Visibility.Hidden;
+                pbStatus.Visibility = Visibility.Visible;
+                btnCancel.Visibility = Visibility.Visible;
+
+                pbStatus.Value = 0;
+                pbStatus.Maximum = fileList.Count;
                 ExcelLogic.excelWorker.RunWorkerAsync(fileList);
+            }
+        }
+
+        private void btnCancel_Click(object sender, RoutedEventArgs e)
+        {
+            if(ExcelLogic.excelWorker.IsBusy)
+            {
+                ExcelLogic.excelWorker.CancelAsync();
             }
         }
 
@@ -126,7 +149,5 @@ namespace TabelCombiner
                 ListBoxFiles.UnselectAll();
             }
         }
-
-        
     }
 }

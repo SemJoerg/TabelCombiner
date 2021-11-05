@@ -17,8 +17,8 @@ namespace TabelCombiner
         static ExcelLogic()
         {
             excelWorker = new BackgroundWorker();
-            excelWorker.WorkerReportsProgress = false;
-            excelWorker.WorkerSupportsCancellation = false;
+            excelWorker.WorkerReportsProgress = true;
+            excelWorker.WorkerSupportsCancellation = true;
             excelWorker.DoWork += ExcelWorker_DoWork;
         }
 
@@ -27,6 +27,26 @@ namespace TabelCombiner
             Excel.Application excelApp = null;
             Excel.Workbooks workbooks = null;
             Excel._Workbook mainWorkbook = null;
+
+            void ReleaseEverything()
+            {
+                if (mainWorkbook != null)
+                {
+                    Marshal.FinalReleaseComObject(mainWorkbook);
+                    mainWorkbook = null;
+                }
+                if (workbooks != null)
+                {
+                    Marshal.FinalReleaseComObject(workbooks);
+                    workbooks = null;
+                }
+                if (excelApp != null)
+                {
+                    Marshal.FinalReleaseComObject(excelApp);
+                    excelApp = null;
+                }
+            }
+
             try
             {
                 IEnumerable<FileInfo> files = e.Argument as IEnumerable<FileInfo>;
@@ -35,9 +55,9 @@ namespace TabelCombiner
                 excelApp.Visible = false;
                 workbooks = excelApp.Workbooks;
                 mainWorkbook = workbooks.Add();
-                //Excel._Worksheet mainSheet = (Excel._Worksheet)mainWorkbook.ActiveSheet;
                 Excel._Worksheet mainSheet = (Excel._Worksheet)mainWorkbook.Sheets[1];
-                int mainSheetRowCounter = 0;
+                mainSheet.Name = "DeleteSheet";
+                int mainSheetRowCounter = 2;
                 bool copyTabelHeadder = true;
 
                 //Read And Combine Files
@@ -48,14 +68,14 @@ namespace TabelCombiner
                     {
                         newWorkbook = workbooks.Open(file.FullName);
                         Excel._Worksheet newSheet = null;
+
                         if (copyTabelHeadder)
                         {
                             newSheet = (Excel.Worksheet)newWorkbook.Sheets[1];
-                            int lastRow = LastRowTotal(newSheet);
-                            Excel.Range source = newSheet.Range["1:" + lastRow];
-                            Excel.Range destination = mainSheet.Range["1:1"];
-                            source.Copy(destination);
-                            mainSheetRowCounter = lastRow + 1;
+                            newSheet.Copy(After: mainSheet);
+                            mainSheet.Delete();
+                            mainSheet = (Excel._Worksheet)mainWorkbook.Sheets[1];
+
                             for (int i = 2; i <= newWorkbook.Sheets.Count; i++)
                             {
                                 newSheet = (Excel._Worksheet)newWorkbook.Sheets[i];
@@ -68,29 +88,30 @@ namespace TabelCombiner
                         {
                             newSheet = (Excel._Worksheet)newWorkbook.Sheets[1];
 
-                            int lastRow = LastRowTotal(newSheet);
-                            if(lastRow > 1)
-                            {
-                                Excel.Range source = newSheet.Range["2:" + lastRow];
-                                Excel.Range destination = mainSheet.Range[mainSheetRowCounter + ":" + mainSheetRowCounter];
-                                mainSheetRowCounter += lastRow - 1;
-                                source.Copy(destination);
-                            }
+                            Excel.Range source = newSheet.Range["2:2"];
+                            Excel.Range destination = mainSheet.Range[++mainSheetRowCounter + ":" + mainSheetRowCounter];
+                            source.Copy(destination);
                         }
                     }
                     catch (Exception ex)
                     {
                         Log.ErrorMessage(ex.Message);
                     }
-                    finally
+
+                    if (newWorkbook != null)
                     {
-                        if (newWorkbook != null)
-                        {
-                            newWorkbook.Close(false);
-                            Marshal.FinalReleaseComObject(newWorkbook);
-                            newWorkbook = null;
-                        }
+                        newWorkbook.Close(false);
+                        Marshal.FinalReleaseComObject(newWorkbook);
+                        newWorkbook = null;
                     }
+                    if (excelWorker.CancellationPending)
+                    {
+                        mainWorkbook.Close(false);
+                        excelApp.Quit();
+                        ReleaseEverything();
+                        return;
+                    }
+                    excelWorker.ReportProgress(mainSheetRowCounter - 1);
                 }
 
                 excelApp.Visible = true;
@@ -101,28 +122,8 @@ namespace TabelCombiner
             }
             finally
             {
-                if(mainWorkbook != null)
-                {
-                    Marshal.FinalReleaseComObject(mainWorkbook);
-                    mainWorkbook = null;
-                }
-                if(workbooks != null)
-                {
-                    Marshal.FinalReleaseComObject(workbooks);
-                    workbooks = null;
-                }
-                if(excelApp != null)
-                {
-                    Marshal.FinalReleaseComObject(excelApp);
-                    excelApp = null;
-                }
+                ReleaseEverything();
             }
-        }
-
-        public static int LastRowTotal(Excel._Worksheet wks)
-        {
-            Excel.Range lastCell = wks.Cells.SpecialCells(Excel.XlCellType.xlCellTypeLastCell, Type.Missing);
-            return lastCell.Row;
         }
     }
 }
