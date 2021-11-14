@@ -2,11 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using System.Threading;
 using Excel = Microsoft.Office.Interop.Excel;
 using System.Runtime.InteropServices;
 using System.ComponentModel;
 using System.IO;
+using Forms = System.Windows.Forms;
+using System.Diagnostics;
+
 
 namespace TabelCombiner
 {
@@ -22,11 +25,23 @@ namespace TabelCombiner
             excelWorker.DoWork += ExcelWorker_DoWork;
         }
 
+        [DllImport("user32.dll")]
+        private static extern int GetWindowThreadProcessId(int hWnd, out int lpdwProcessId);
+
+        private static Process GetExcelProcess(Excel.Application excelApp)
+        {
+            int id;
+            GetWindowThreadProcessId(excelApp.Hwnd, out id);
+            return Process.GetProcessById(id);
+        }
+
         private static void ExcelWorker_DoWork(object sender, DoWorkEventArgs e)
         {
             Excel.Application excelApp = null;
+            Process excelProcess = null;
             Excel.Workbooks workbooks = null;
             Excel._Workbook mainWorkbook = null;
+            ExcelWorkerArgs args = e.Argument as ExcelWorkerArgs;
 
             void ReleaseEverything()
             {
@@ -49,9 +64,8 @@ namespace TabelCombiner
 
             try
             {
-                IEnumerable<FileInfo> files = e.Argument as IEnumerable<FileInfo>;
-
                 excelApp = new Excel.Application();
+                excelProcess = GetExcelProcess(excelApp);
                 excelApp.Visible = false;
                 workbooks = excelApp.Workbooks;
                 mainWorkbook = workbooks.Add();
@@ -61,7 +75,7 @@ namespace TabelCombiner
                 bool copyTabelHeadder = true;
 
                 //Read And Combine Files
-                foreach (FileInfo file in files)
+                foreach (FileInfo file in args.FileList)
                 {
                     Excel._Workbook newWorkbook = null;
                     try
@@ -98,23 +112,52 @@ namespace TabelCombiner
                         Log.ErrorMessage(ex.Message);
                     }
 
+                    //Close and release newWorkbook
                     if (newWorkbook != null)
                     {
                         newWorkbook.Close(false);
                         Marshal.FinalReleaseComObject(newWorkbook);
                         newWorkbook = null;
                     }
+
+                    //Check for cancelation
                     if (excelWorker.CancellationPending)
                     {
-                        mainWorkbook.Close(false);
-                        excelApp.Quit();
-                        ReleaseEverything();
                         return;
                     }
+
                     excelWorker.ReportProgress(mainSheetRowCounter - 1);
                 }
 
-                excelApp.Visible = true;
+
+                if(args.ExportAsTextFile)
+                {
+                    string filePath = null;
+
+                    Thread fileSaveThread = new Thread(() =>
+                    {
+                        Forms.SaveFileDialog saveFileDialog = new Forms.SaveFileDialog();
+                        saveFileDialog.Filter = "txt files (*.txt)|*.txt|All files (*.*)|*.*";
+                        saveFileDialog.AddExtension = true;
+                        saveFileDialog.DefaultExt = ".txt";
+                        saveFileDialog.ShowDialog();
+                        filePath = saveFileDialog.FileName;
+                    });
+                    fileSaveThread.SetApartmentState(ApartmentState.STA);
+                    fileSaveThread.Start();
+                    fileSaveThread.Join();
+                    
+                    if(!String.IsNullOrEmpty(filePath))
+                    {
+                        mainSheet.SaveAs2(filePath, Excel.XlFileFormat.xlTextWindows);
+                    }
+                }
+
+                if(args.ShowExcel)
+                {
+                    excelApp.Visible = true;
+                }
+
             }
             catch (Exception ex)
             {
@@ -122,7 +165,17 @@ namespace TabelCombiner
             }
             finally
             {
-                ReleaseEverything();
+                if(!excelApp.Visible)
+                {
+                    mainWorkbook.Close(false);
+                    excelApp.Quit();
+                    ReleaseEverything();
+                    excelProcess.Kill(true);
+                }
+                else
+                {
+                    ReleaseEverything();
+                }
             }
         }
     }

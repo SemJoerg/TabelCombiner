@@ -17,6 +17,7 @@ namespace TabelCombiner
     public partial class MainWindow : Window
     {
         ObservableCollection<FileInfo> fileList;
+        bool closeApplicationAfterExcelCompleted = false;
 
         public MainWindow()
         {
@@ -29,12 +30,27 @@ namespace TabelCombiner
             ListBoxFiles.ItemsSource = fileList;
         }
 
+        async void Window_Closing(object sender, CancelEventArgs e)
+        {
+            if (ExcelLogic.excelWorker.IsBusy)
+            {
+                e.Cancel = true;
+                closeApplicationAfterExcelCompleted = true;
+                ExcelLogic.excelWorker.CancelAsync();
+            }
+        }
+
         private void ExcelWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
             Mouse.OverrideCursor = null;
             pbStatus.Visibility = Visibility.Hidden;
             btnCancel.Visibility = Visibility.Hidden;
             btnZusammenfügen.Visibility = Visibility.Visible;
+
+            if(closeApplicationAfterExcelCompleted)
+            {
+                this.Close();
+            }
         }
 
         private void ExcelWorker_ProgressChanged(object sender, ProgressChangedEventArgs e)
@@ -42,19 +58,30 @@ namespace TabelCombiner
             pbStatus.Value = e.ProgressPercentage;
         }
 
-        private void FileList_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        
+        private void EnableDisableBtnZusammenfügen()
         {
-            if(fileList.Count > 0)
+            if (fileList.Count > 0 && (cbSaveTextFile.IsChecked == true || cbShowExcelTabel.IsChecked == true))
             {
-                if(btnZusammenfügen.IsEnabled == false)
+                if (btnZusammenfügen.IsEnabled == false)
                 {
                     btnZusammenfügen.IsEnabled = true;
                 }
             }
-            else if(btnZusammenfügen.IsEnabled == true)
+            else if (btnZusammenfügen.IsEnabled == true)
             {
                 btnZusammenfügen.IsEnabled = false;
             }
+        }
+        
+        private void FileList_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            EnableDisableBtnZusammenfügen();
+        }
+
+        private void cb_Click(object sender, RoutedEventArgs e)
+        {
+            EnableDisableBtnZusammenfügen();
         }
 
         private void BtnHinzufügen_Click(object sender, RoutedEventArgs e)
@@ -114,7 +141,7 @@ namespace TabelCombiner
 
                 pbStatus.Value = 0;
                 pbStatus.Maximum = fileList.Count;
-                ExcelLogic.excelWorker.RunWorkerAsync(fileList);
+                ExcelLogic.excelWorker.RunWorkerAsync(new ExcelWorkerArgs(fileList.ToArray(), cbSaveTextFile.IsChecked, cbShowExcelTabel.IsChecked));
             }
         }
 

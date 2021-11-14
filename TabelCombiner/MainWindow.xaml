@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:TabelCombiner"
         mc:Ignorable="d"
-        Title="TabelCombiner" MinHeight="300" Height="450" MinWidth="400" Width="800">
+        Title="TabelCombiner" MinHeight="300" Height="450" MinWidth="400" Width="800" Closing="Window_Closing">
     <DockPanel>
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="40" Margin="10">
             <Button Content="Hinzufügen" FontSize="16" Padding="10,0,10,0" Margin="0,0,20,0" Click="BtnHinzufügen_Click"/>
@@ -21,6 +21,10 @@
             <ProgressBar x:Name="pbStatus" Visibility="Hidden"/>
             <Button x:Name="btnCancel" Grid.Column="2" Margin="10,0,0,0" Background="Gray" Content="Cancel" Click="btnCancel_Click" Visibility="Hidden"/>
         </Grid>
+        <StackPanel Margin="5,5,5,0" DockPanel.Dock="Bottom">
+            <CheckBox x:Name="cbSaveTextFile" Margin="0,0,0,5" Content="Als Textdatei exportieren" IsChecked="True" Click="cb_Click"/>
+            <CheckBox x:Name="cbShowExcelTabel" Content="Exceltabelle anzeigen" Click="cb_Click"/>
+        </StackPanel>
 
 
         <ListBox x:Name="ListBoxFiles" Padding="10" SelectionMode="Extended" ScrollViewer.VerticalScrollBarVisibility="Auto" SelectionChanged="ListBoxFiles_SelectionChanged">
